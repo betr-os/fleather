@@ -79,6 +79,11 @@ Widget defaultSpellCheckMenuBuilder(
 typedef FleatherEmbedBuilder = Widget Function(
     BuildContext context, EmbedNode node);
 
+/// Builds the box of a checklist item. [onChanged] is null when the box
+/// cannot be toggled.
+typedef FleatherCheckboxBuilder = Widget Function(
+    BuildContext context, bool value, ValueChanged<bool>? onChanged);
+
 /// Default implementation of a builder function for embeddable objects in
 /// Fleather.
 ///
@@ -303,6 +308,19 @@ class FleatherEditor extends StatefulWidget {
 
   final TextSelectionControls? textSelectionControls;
 
+  /// Color of the cursor. Defaults to the platform's text selection theme.
+  final Color? cursorColor;
+
+  /// Width of the cursor in logical pixels.
+  final double cursorWidth;
+
+  /// Whether checklist items can be ticked while [readOnly] is true. Ticking
+  /// changes the document through [controller] as in an editable editor.
+  final bool checklistTogglesWhenReadOnly;
+
+  /// Builds checklist boxes; defaults to [FleatherCheckbox].
+  final FleatherCheckboxBuilder? checkboxBuilder;
+
   const FleatherEditor(
       {super.key,
       required this.controller,
@@ -332,7 +350,11 @@ class FleatherEditor extends StatefulWidget {
       this.contextMenuBuilder = defaultContextMenuBuilder,
       this.embedBuilder = defaultFleatherEmbedBuilder,
       this.linkActionPickerDelegate = defaultLinkActionPickerDelegate,
-      this.textSelectionControls});
+      this.textSelectionControls,
+      this.cursorColor,
+      this.cursorWidth = 2.0,
+      this.checklistTogglesWhenReadOnly = false,
+      this.checkboxBuilder});
 
   @override
   State<FleatherEditor> createState() => _FleatherEditorState();
@@ -481,6 +503,7 @@ class _FleatherEditorState extends State<FleatherEditor>
             theme.colorScheme.primary.withValues(alpha: 0.40);
         break;
     }
+    cursorColor = widget.cursorColor ?? cursorColor;
 
     Widget child = RawEditor(
       key: editableTextKey,
@@ -514,7 +537,7 @@ class _FleatherEditorState extends State<FleatherEditor>
       cursorStyle: CursorStyle(
         color: cursorColor,
         backgroundColor: Colors.grey,
-        width: 2.0,
+        width: widget.cursorWidth,
         radius: cursorRadius,
         offset: cursorOffset,
         paintAboveText: paintCursorAboveText,
@@ -525,6 +548,8 @@ class _FleatherEditorState extends State<FleatherEditor>
       onSelectionChanged: _handleSelectionChanged,
       selectionControls: textSelectionControls,
       contextMenuBuilder: widget.contextMenuBuilder,
+      checklistTogglesWhenReadOnly: widget.checklistTogglesWhenReadOnly,
+      checkboxBuilder: widget.checkboxBuilder,
     );
 
     child = FleatherShortcuts(
@@ -619,6 +644,8 @@ class RawEditor extends StatefulWidget {
     this.spellCheckConfiguration,
     this.embedBuilder = defaultFleatherEmbedBuilder,
     this.linkActionPickerDelegate = defaultLinkActionPickerDelegate,
+    this.checklistTogglesWhenReadOnly = false,
+    this.checkboxBuilder,
   })  : assert(maxHeight == null || maxHeight > 0),
         assert(minHeight == null || minHeight >= 0),
         assert(
@@ -638,6 +665,12 @@ class RawEditor extends StatefulWidget {
   final ScrollController? scrollController;
 
   final bool scrollable;
+
+  /// See [FleatherEditor.checklistTogglesWhenReadOnly].
+  final bool checklistTogglesWhenReadOnly;
+
+  /// See [FleatherEditor.checkboxBuilder].
+  final FleatherCheckboxBuilder? checkboxBuilder;
 
   /// Additional space around the editor contents.
   final EdgeInsetsGeometry padding;
@@ -1873,6 +1906,8 @@ class RawEditorState extends EditorState
             embedBuilder: widget.embedBuilder,
             linkActionPicker: _linkActionPicker,
             onLaunchUrl: widget.onLaunchUrl,
+            checklistTogglesWhenReadOnly: widget.checklistTogglesWhenReadOnly,
+            checkboxBuilder: widget.checkboxBuilder,
           ),
         ));
       } else {

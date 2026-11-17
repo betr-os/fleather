@@ -28,6 +28,8 @@ class EditableTextBlock extends StatelessWidget {
   final LinkActionPicker linkActionPicker;
   final ValueChanged<String?>? onLaunchUrl;
   final EdgeInsets? contentPadding;
+  final bool checklistTogglesWhenReadOnly;
+  final FleatherCheckboxBuilder? checkboxBuilder;
 
   const EditableTextBlock({
     super.key,
@@ -45,6 +47,8 @@ class EditableTextBlock extends StatelessWidget {
     required this.linkActionPicker,
     this.onLaunchUrl,
     this.contentPadding,
+    this.checklistTogglesWhenReadOnly = false,
+    this.checkboxBuilder,
   });
 
   @override
@@ -121,7 +125,8 @@ class EditableTextBlock extends StatelessWidget {
       children.map((node) {
         return _CheckboxPoint(
           value: node.style.containsSame(ParchmentAttribute.checked),
-          enabled: !readOnly,
+          enabled: !readOnly || checklistTogglesWhenReadOnly,
+          builder: checkboxBuilder,
           onChanged: (checked) => _toggle(node, checked),
         );
       }).toList();
@@ -377,11 +382,13 @@ class _CheckboxPoint extends StatefulWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.builder,
   });
 
   final bool value;
   final bool enabled;
   final ValueChanged<bool> onChanged;
+  final FleatherCheckboxBuilder? builder;
 
   @override
   State<_CheckboxPoint> createState() => _CheckboxPointState();
@@ -400,18 +407,20 @@ class _CheckboxPointState extends State<_CheckboxPoint> {
 
   @override
   Widget build(BuildContext context) {
+    final ValueChanged<bool>? onChanged = widget.enabled
+        ? (_) {
+            widget.onChanged(!value);
+            setState(() => value = !value);
+          }
+        : null;
     return Container(
       alignment: AlignmentDirectional.topEnd,
       padding: const EdgeInsetsDirectional.only(top: 2.0, end: 12.0),
-      child: FleatherCheckbox(
-        value: value,
-        onChanged: widget.enabled
-            ? (_) {
-                widget.onChanged(!value);
-                setState(() => value = !value);
-              }
-            : null,
-      ),
+      child: widget.builder?.call(context, value, onChanged) ??
+          FleatherCheckbox(
+            value: value,
+            onChanged: onChanged == null ? null : (v) => onChanged(v ?? false),
+          ),
     );
   }
 }
